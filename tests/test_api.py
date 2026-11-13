@@ -37,3 +37,32 @@ def test_mark_done(client):
 
 def test_not_found(client):
     assert client.patch("/tasks/999", json={"done": True}).status_code == 404
+
+
+def test_delete_removes_only_requested_task(client):
+    first = client.post("/tasks", json={"title": "Primeira"}).json
+    second = client.post("/tasks", json={"title": "Segunda"}).json
+    result = client.delete(f'/tasks/{first["id"]}')
+    assert result.status_code == 204
+    assert result.data == b""
+    remaining = client.get("/tasks").json
+    assert [task["id"] for task in remaining] == [second["id"]]
+
+
+def test_delete_not_found(client):
+    result = client.delete("/tasks/999")
+    assert result.status_code == 404
+    assert result.json["error"] == "tarefa nao encontrada"
+
+
+def test_delete_twice_returns_404_on_second_call(client):
+    item = client.post("/tasks", json={"title": "Remover uma vez"}).json
+    assert client.delete(f'/tasks/{item["id"]}').status_code == 204
+    assert client.delete(f'/tasks/{item["id"]}').status_code == 404
+
+
+def test_version_endpoint(client):
+    result = client.get("/version")
+    assert result.status_code == 200
+    assert result.json["service"] == "cloud-tasks-api"
+    assert result.json["version"] == "1.0.0"
