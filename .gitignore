@@ -5,3 +5,5 @@ __pycache__/
 *.db
 *.pem
 *.key
+
+docs/evidencias/
