@@ -4,11 +4,12 @@ from pathlib import Path
 from flask import Flask, jsonify, request
 
 DB_PATH = os.environ.get("DB_PATH", "/tmp/cloud_tasks.db")
+APP_VERSION = os.environ.get("APP_VERSION", "1.0.0")
 
 
 def create_app(test_config=None):
     app = Flask(__name__)
-    app.config.update(DATABASE=DB_PATH)
+    app.config.update(DATABASE=DB_PATH, APP_VERSION=APP_VERSION)
     if test_config:
         app.config.update(test_config)
 
@@ -25,7 +26,7 @@ def create_app(test_config=None):
 
     @app.get("/")
     def index():
-        return jsonify(service="cloud-tasks-api", message="API de tarefas em nuvem", endpoints=["/health", "/tasks"])
+        return jsonify(service="cloud-tasks-api", message="API de tarefas em nuvem", endpoints=["/health", "/tasks", "/version"])
 
     @app.get("/health")
     def health():
@@ -67,6 +68,19 @@ def create_app(test_config=None):
         if not cursor.rowcount:
             return jsonify(error="tarefa nao encontrada"), 404
         return jsonify(id=task_id, done=data["done"]), 200
+
+    @app.delete("/tasks/<int:task_id>")
+    def delete_task(task_id):
+        with connect() as db:
+            cursor = db.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+            db.commit()
+        if cursor.rowcount == 0:
+            return jsonify(error="tarefa nao encontrada"), 404
+        return "", 204
+
+    @app.get("/version")
+    def version():
+        return jsonify(service="cloud-tasks-api", version=app.config["APP_VERSION"])
 
     return app
 
